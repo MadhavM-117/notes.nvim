@@ -7,6 +7,26 @@ local templates = require('notes.templates')
 local M = {}
 M.links = links
 
+-- All config paths may be `~`-expanded; vault roots are absolutized on use.
+---@class notes.Config
+---@field default_vault string path of the unnamed default vault
+---@field vaults table<string, string> extra vaults, name -> path
+---@field templates notes.ConfigTemplates
+---@field daily notes.ConfigDaily
+---@field keymaps notes.ConfigKeymaps
+
+---@class notes.ConfigTemplates
+---@field dir? string directory of `*.md` templates
+---@field default string template file used by :Note when no template is given
+
+---@class notes.ConfigDaily
+---@field dir string daily dir, relative to the vault root or absolute
+---@field filename string filename pattern, rendered through the template engine
+---@field template? string template path for daily notes; falls back to `templates`
+
+---@class notes.ConfigKeymaps
+---@field toggle_todo string keymap that toggles Markdown checkboxes
+
 local defaults = {
   default_vault = (vim.env.XDG_DOCUMENTS_DIR or vim.fn.expand('~/Documents')) .. '/notes',
   vaults = {}, -- extra named vaults: name = path
@@ -16,10 +36,13 @@ local defaults = {
 }
 local user_opts = {}
 
+---Returns the effective config: defaults merged with what setup() got.
+---@return notes.Config
 function M.get_config()
   return vim.tbl_deep_extend('force', {}, defaults, user_opts)
 end
 
+---@param opts? notes.Config
 function M.setup(opts)
   user_opts = opts or {}
   return M
