@@ -90,7 +90,17 @@ All picking goes through `vim.ui.select` — zero dependencies. With
 require('snacks').setup({ picker = { select = true } })
 ```
 
-Telescope/fzf users get their native UX the same way.
+Telescope/fzf users get their native UX the same way. To route only this
+plugin's pickers (template choice, to-dos, link fixes) through something else,
+override the hook:
+
+```lua
+require('notes').setup({ ui = {
+  select = function(items, opts, on_choice)
+    require('snacks').picker.select(items, opts, on_choice)
+  end,
+} })
+```
 
 ## Tests
 
@@ -100,8 +110,39 @@ nvim --headless -l tests/run.lua
 
 ## Public API
 
-- `require("notes").setup(opts)`
+Typed with LuaLS annotations (`:h lua-stdlib`-style, check with `vim.lsp` in
+your editor). Vault arguments accept a name string, a `notes.Vault` table, or
+`nil` (resolved as `@name` → cwd → default):
+
+- `require("notes").setup(opts)` — merge into defaults
+- `require("notes").resolve_vault(name?)` → `notes.Vault` (`{ name, root }`)
+- `require("notes").open(name, { vault?, template? })` → absolute path;
+  opens the note, creating it (and its directories) if missing
+- `require("notes").get_todos(vault?)` → list of
+  `notes.TodoItem` (`{ path, lnum, line }`)
 - `require("notes").rename(old, new)` → list of rewritten files
+
+For deeper work, the submodules are public too: `notes.vault` (path math &
+vault resolution), `notes.links` (parse/resolve/rewrite + diagnostics),
+`notes.markdown` (list & checkbox logic), `notes.templates` (variable
+rendering), and `notes.ui` (the picker hook above).
+
+Example — your own command that opens today's note in a named vault and jumps
+to its first unchecked to-do:
+
+```lua
+local notes = require('notes')
+vim.api.nvim_create_user_command('ResearchToday', function()
+  local path = notes.open(os.date('%Y-%m-%d'), { vault = 'research' })
+  for _, t in ipairs(notes.get_todos('research')) do
+    if t.path == path and t.line:match('%[ %]') then
+      vim.cmd.edit(vim.fn.fnameescape(t.path))
+      vim.api.nvim_win_set_cursor(0, { t.lnum, 0 })
+      return
+    end
+  end
+end, {})
+```
 
 ## Non-goals (v1)
 

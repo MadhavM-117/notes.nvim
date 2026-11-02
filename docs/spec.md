@@ -72,8 +72,12 @@ require('notes').setup({
   and rewrite all links to it across its vault. Returns the list of rewritten
   files. Safe to call when the file was already moved. This is the hook users
   (or their file manager glue) call.
-- Internals are importable for tests: `notes.links` (pure link logic),
-  `notes.markdown` (pure list/checkbox logic), `notes.vault` (pure path math).
+- Scripting primitives (typed with LuaLS annotations): `resolve_vault(name?)`
+  → `notes.Vault`, `open(name, opts?)` → path, `get_todos(vault?)` →
+  `notes.TodoItem[]`. The commands are thin wrappers over these.
+- Internals are importable for tests and scripting: `notes.links` (pure link
+  logic), `notes.markdown` (pure list/checkbox logic), `notes.vault` (pure
+  path math), `notes.templates`, `notes.ui` (picker hook).
 
 ## 7. Structure
 
@@ -84,6 +88,7 @@ lua/notes/vault.lua         vault resolution, path normalization/relative paths
 lua/notes/links.lua         pure: link parse/resolve/rewrite · vim: diagnostics + fix
 lua/notes/templates.lua     template variable rendering, template listing
 lua/notes/markdown.lua      pure: list continuation, checkbox toggle · vim: keymap handlers
+lua/notes/ui.lua            UI extension points (picker hook; default vim.ui.select)
 after/ftplugin/markdown.lua buffer keymaps
 tests/                      plain-Lua specs (run: nvim --headless -l tests/run.lua)
 README.md

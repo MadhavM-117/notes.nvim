@@ -2,6 +2,7 @@
 -- plus the vim-side diagnostics and fix-suggestion UI.
 
 local vault = require('notes.vault')
+local ui = require('notes.ui')
 
 local M = {}
 
@@ -205,7 +206,7 @@ function M.fix_link_at_cursor()
     return
   end
 
-  vim.ui.select(cands, {
+  ui.select(cands, {
     prompt = 'Broken link "..' .. target .. '.." — which note?',
     format_item = function(c) return c.rel .. '  (' .. c.kind .. ')' end,
   }, function(choice)

@@ -3,9 +3,15 @@
 local vault = require('notes.vault')
 local links = require('notes.links')
 local templates = require('notes.templates')
+local ui = require('notes.ui')
 
 local M = {}
+-- Public submodules: importable for scripting and tests.
 M.links = links
+M.vault = vault
+M.templates = templates
+M.markdown = require('notes.markdown')
+M.ui = ui
 
 -- All config paths may be `~`-expanded; vault roots are absolutized on use.
 ---@class notes.Config
@@ -15,6 +21,20 @@ M.links = links
 ---@field daily notes.ConfigDaily
 ---@field markdown notes.ConfigMarkdown
 ---@field keymaps notes.ConfigKeymaps
+---@field ui notes.ConfigUi
+
+---@class notes.Vault
+---@field name string vault name ('default' for the unnamed one)
+---@field root string absolute vault root
+
+---@class notes.TodoItem
+---@field path string absolute path of the note file
+---@field lnum integer 1-based line number
+---@field line string raw line text
+
+---@class notes.OpenOpts
+---@field vault? string|notes.Vault target vault; nil follows command resolution rules
+---@field template? string template path; nil uses the configured default template
 
 ---@alias notes.Scope 'vault' | 'global'
 
@@ -44,6 +64,7 @@ local defaults = {
   daily = { dir = 'daily', filename = '{{date:YYYY-MM-DD}}.md', template = nil },
   markdown = { cr = 'vault', toggle_todo = 'vault', tab_indent = 'vault' },
   keymaps = { toggle_todo = '<leader>x' },
+  ui = {},
 }
 local user_opts = {}
 
@@ -89,6 +110,12 @@ local function ask_name(rest)
   return (name == '' and nil) or name
 end
 
+-- Accept a vault name, a notes.Vault table, or nil (cwd/default rules).
+local function to_vault(v)
+  if type(v) == 'table' then return v end
+  return vault.resolve(v)
+end
+
 local function template_vars(v, name)
   local title = (name:match('([^/]+)$') or name):gsub('%.md$', '')
   return {
@@ -127,11 +154,10 @@ end
 
 function M.note(args)
   local prefix, rest = split_prefix(args)
-  local v = vault.resolve(prefix)
+  local v = to_vault(prefix) -- fail fast on a bad @vault before prompting
   local name = ask_name(rest)
   if not name then return end
-  local full = abs(v.root .. '/' .. ensure_md(name))
-  open_or_create(full, render_template(M.get_config(), v, name))
+  M.open(name, { vault = v })
 end
 
 function M.note_from_template(args)
@@ -141,24 +167,21 @@ function M.note_from_template(args)
     return
   end
   local prefix, rest = split_prefix(args)
-  local v = vault.resolve(prefix)
+  local v = to_vault(prefix)
   local name = ask_name(rest)
   if not name then return end
 
-  local tpls = templates.list(abs(cfg.templates.dir))
-  vim.ui.select(tpls, {
+  ui.select(templates.list(abs(cfg.templates.dir)), {
     prompt = 'Template:',
     format_item = function(t) return vim.fn.fnamemodify(t, ':t') end,
   }, function(chosen)
-    if not chosen then return end
-    local full = abs(v.root .. '/' .. ensure_md(name))
-    open_or_create(full, render_template(cfg, v, name, chosen))
+    if chosen then M.open(name, { vault = v, template = chosen }) end
   end)
 end
 
 function M.daily(args)
   local prefix = split_prefix(args)
-  local v = vault.resolve(prefix)
+  local v = to_vault(prefix)
   local cfg = M.get_config().daily
 
   local dir = cfg.dir
@@ -169,42 +192,31 @@ function M.daily(args)
     date = os.date('%Y-%m-%d'),
     time = os.date('%H:%M'),
   })
-  local title = fn:gsub('%.md$', '')
-  local full = abs(dir .. '/' .. ensure_md(fn))
-
   -- daily.template, else the default note template, else blank
   local path = cfg.template
   if not path then
     local t = M.get_config().templates
     if t.dir then path = t.dir .. '/' .. t.default end
   end
-  open_or_create(full, render_template(M.get_config(), v, title, path))
+  M.open(dir .. '/' .. fn, { vault = v, template = path })
 end
 
 function M.todos(args)
   local prefix = split_prefix(args)
-  local v = vault.resolve(prefix)
-  local items = {}
-  for _, f in ipairs(vault.files(v.root)) do
-    local lines = vim.fn.readfile(f)
-    for i, line in ipairs(lines) do
-      if line:match('^%s*[-*+]%s+%[[ xX]%]') then
-        items[#items + 1] = { f = f, lines = lines, lnum = i, line = line }
-      end
-    end
-  end
+  local v = to_vault(prefix)
+  local items = M.get_todos(v)
   if #items == 0 then
     vim.notify('notes: no to-dos in vault', vim.log.levels.INFO)
     return
   end
-  vim.ui.select(items, {
+  ui.select(items, {
     prompt = 'To-dos in ' .. v.name,
     format_item = function(it)
-      return string.format('%s:%d  %s', (it.f:match('([^/]+)$') or it.f), it.lnum, it.line)
+      return string.format('%s:%d  %s', (it.path:match('([^/]+)$') or it.path), it.lnum, it.line)
     end,
   }, function(chosen)
     if chosen then
-      vim.cmd.edit(vim.fn.fnameescape(chosen.f))
+      vim.cmd.edit(vim.fn.fnameescape(chosen.path))
       vim.api.nvim_win_set_cursor(0, { chosen.lnum, 0 })
     end
   end)
@@ -231,6 +243,43 @@ function M.set_scope(args)
 end
 
 -- ---- public API ----
+
+---Resolve a vault: nil or '' follows the command rules (@name > cwd > default).
+---@param name? string vault name, or nil for the implicit vault
+---@return notes.Vault
+function M.resolve_vault(name)
+  return to_vault(name)
+end
+
+---Open a note, creating it (and its directories) if missing. `name` is
+---vault-relative; an absolute or `~/` path opens that file instead.
+---@param name string note name ('.md' appended when missing)
+---@param opts? notes.OpenOpts
+---@return string path absolute path of the note
+function M.open(name, opts)
+  opts = opts or {}
+  local v = to_vault(opts.vault)
+  local full = abs(name:match('^[~/]') and name or v.root .. '/' .. ensure_md(name))
+  open_or_create(full, render_template(M.get_config(), v, name, opts.template))
+  return full
+end
+
+---Every checkbox item (`- [ ]` / `- [x]`) in a vault.
+---@param v? string|notes.Vault vault name or table; nil resolves from cwd
+---@return notes.TodoItem[]
+function M.get_todos(v)
+  v = to_vault(v)
+  local items = {}
+  for _, f in ipairs(vault.files(v.root)) do
+    local lines = vim.fn.readfile(f)
+    for i, line in ipairs(lines) do
+      if line:match('^%s*[-*+]%s+%[[ xX]%]') then
+        items[#items + 1] = { path = f, lnum = i, line = line }
+      end
+    end
+  end
+  return items
+end
 
 -- Move a file and rewrite every link that pointed at it, across its vault.
 -- Also safe when the file was already moved (just rewrites). Returns the
