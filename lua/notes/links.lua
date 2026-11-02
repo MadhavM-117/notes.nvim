@@ -106,15 +106,7 @@ end
 -- Flag broken links in a buffer (no-op outside vaults).
 function M.check_buffer(bufnr)
   local path = vault.canon(vim.api.nvim_buf_get_name(bufnr))
-  if path == '' or path == '/' then return end
-  local in_vault = false
-  for _, v in ipairs(vault.all()) do
-    if vault.is_under(v.root, path) then
-      in_vault = true
-      break
-    end
-  end
-  if not in_vault then return end
+  if not vault.containing(path) then return end
 
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local diags = {}
@@ -200,17 +192,12 @@ function M.fix_link_at_cursor()
     return
   end
 
-  local root
-  for _, v in ipairs(vault.all()) do
-    if vault.is_under(v.root, path) then
-      root = v.root
-      break
-    end
-  end
-  if not root then
+  local v = vault.containing(path)
+  if not v then
     vim.notify('notes: buffer is not in a vault', vim.log.levels.WARN)
     return
   end
+  local root = v.root
 
   local cands = M.candidates(root, target)
   if #cands == 0 then

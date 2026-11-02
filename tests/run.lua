@@ -1,10 +1,10 @@
 -- Test runner: nvim --headless -l tests/run.lua  (also runs under plain Lua,
 -- the pure modules never touch vim at load time).
-package.path = './?.lua;./lua/?.lua;' .. package.path
+package.path = './?.lua;./lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local helper = require('tests.helper')
 
-local specs = { 'tests/links_spec.lua', 'tests/markdown_spec.lua', 'tests/templates_spec.lua' }
+local specs = { 'tests/links_spec.lua', 'tests/markdown_spec.lua', 'tests/templates_spec.lua', 'tests/vault_spec.lua' }
 for _, f in ipairs(specs) do
   local ok, err = pcall(dofile, f)
   if not ok then

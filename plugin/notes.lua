@@ -22,6 +22,17 @@ vim.api.nvim_create_user_command('NoteFixLink', function()
   notes.links.fix_link_at_cursor()
 end, { desc = 'Fix the broken link under the cursor' })
 
+vim.api.nvim_create_user_command('NoteScope', function(a)
+  notes.set_scope(a.fargs)
+end, {
+  nargs = '*',
+  desc = 'Show or set markdown behavior scope (vault|global)',
+  complete = function(_, line)
+    if #vim.split(vim.trim(line), '%s+') == 2 then return notes.behaviors end
+    return { 'vault', 'global' }
+  end,
+})
+
 vim.api.nvim_create_user_command('NoteTodos', function(a)
   notes.todos(a.fargs)
 end, { nargs = '*', desc = 'List to-dos in the current vault' })

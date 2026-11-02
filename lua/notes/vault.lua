@@ -88,6 +88,14 @@ function M.resolve(prefix)
   return all[1]
 end
 
+-- The vault whose root contains `path`, or nil.
+function M.containing(path)
+  if path == '' then return nil end
+  for _, v in ipairs(M.all()) do
+    if M.is_under(v.root, path) then return v end
+  end
+end
+
 -- All markdown files under a root.
 -- shortcut: glob skips hidden directories, fine for note vaults.
 function M.files(root)

@@ -15,6 +15,9 @@ See [docs/spec.md](docs/spec.md) for the full design and non-goals.
 - `:NoteCheckLinks` — diagnostic marks for broken links (also runs on open/save)
 - `:NoteFixLink` — fix the link under the cursor, with suggested candidate notes
 - `:NoteTodos [@vault]` — list to-dos across the vault
+- `:NoteScope [behavior] [vault|global]` — show or set, per markdown
+  behavior (`cr`, `toggle_todo`, `tab_indent`), whether it applies only
+  in vault files (default) or in every Markdown buffer
 - Markdown niceties: `<CR>` continues lists (same bullet, incrementing
   numbers, checkbox carried; empty item ends the list), `<leader>x`
   toggles checkboxes, and `<Tab>`/`<S-Tab>` indent/outdent list items

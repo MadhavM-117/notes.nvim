@@ -13,7 +13,17 @@ M.links = links
 ---@field vaults table<string, string> extra vaults, name -> path
 ---@field templates notes.ConfigTemplates
 ---@field daily notes.ConfigDaily
+---@field markdown notes.ConfigMarkdown
 ---@field keymaps notes.ConfigKeymaps
+
+---@alias notes.Scope 'vault' | 'global'
+
+---@class notes.ConfigMarkdown
+---Scope of each Markdown editing behavior: 'vault' (only in vault files)
+---or 'global' (any Markdown buffer).
+---@field cr notes.Scope list continuation on <CR>
+---@field toggle_todo notes.Scope checkbox toggling
+---@field tab_indent notes.Scope Tab/Shift-Tab indenting
 
 ---@class notes.ConfigTemplates
 ---@field dir? string directory of `*.md` templates
@@ -32,9 +42,13 @@ local defaults = {
   vaults = {}, -- extra named vaults: name = path
   templates = { dir = nil, default = 'note.md' },
   daily = { dir = 'daily', filename = '{{date:YYYY-MM-DD}}.md', template = nil },
+  markdown = { cr = 'vault', toggle_todo = 'vault', tab_indent = 'vault' },
   keymaps = { toggle_todo = '<leader>x' },
 }
 local user_opts = {}
+
+M.behaviors = { 'cr', 'toggle_todo', 'tab_indent' }
+local scopes = { vault = true, global = true }
 
 ---Returns the effective config: defaults merged with what setup() got.
 ---@return notes.Config
@@ -194,6 +208,26 @@ function M.todos(args)
       vim.api.nvim_win_set_cursor(0, { chosen.lnum, 0 })
     end
   end)
+end
+
+-- Show behavior scopes, or set one: set_scope { behavior, 'vault'|'global' }.
+-- Takes effect immediately, including in buffers that are already open.
+function M.set_scope(args)
+  local m = M.get_config().markdown
+  if not args or #args == 0 then
+    for _, b in ipairs(M.behaviors) do
+      vim.notify(('notes: %s = %s'):format(b, m[b]))
+    end
+    return
+  end
+  local behavior, scope = args[1], args[2]
+  if not vim.list_contains(M.behaviors, behavior) or not scopes[scope] then
+    vim.notify('notes: usage :NoteScope [cr|toggle_todo|tab_indent] [vault|global]', vim.log.levels.WARN)
+    return
+  end
+  user_opts.markdown = user_opts.markdown or {}
+  user_opts.markdown[behavior] = scope
+  vim.notify(('notes: %s = %s'):format(behavior, scope))
 end
 
 -- ---- public API ----

@@ -1,0 +1,15 @@
+local h = require('tests.helper')
+local v = require('notes.vault')
+local notes = require('notes')
+
+h.t('containing finds the vault holding a path', function()
+  local tmp = vim.fn.tempname()
+  vim.fn.mkdir(tmp .. '/vault/sub', 'p')
+  notes.setup({ default_vault = tmp .. '/vault', vaults = { other = tmp .. '/other' } })
+  h.eq(v.containing(tmp .. '/vault/sub/note.md').name, 'default')
+  h.eq(v.containing(tmp .. '/other/note.md').name, 'other')
+  h.eq(v.containing('/elsewhere/note.md'), nil)
+  h.eq(v.containing(''), nil)
+  notes.setup({}) -- restore defaults for any later cases
+  vim.fn.delete(tmp, 'rf')
+end)
