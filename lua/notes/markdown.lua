@@ -33,6 +33,14 @@ function M.continuation(line)
   return s
 end
 
+-- Byte length of the bullet prefix (indent + marker + checkbox), or nil if
+-- the line is not a list item.
+function M.marker_end(line)
+  local it = parse_list(line)
+  if not it then return nil end
+  return #it.indent + #it.marker + (it.check and #it.check + 1 or 0)
+end
+
 -- Flip the first checkbox in a line; returns the line or nil.
 function M.toggle_checkbox(line)
   local start, _ = line:find('%[[ xX]%]')

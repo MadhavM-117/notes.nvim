@@ -31,6 +31,13 @@ h.t('non-list lines pass through', function()
   h.eq(m.continuation('# heading'), nil)
 end)
 
+h.t('marker_end returns bullet prefix length', function()
+  h.eq(m.marker_end('- foo'), 2)
+  h.eq(m.marker_end('  * [ ] foo'), 8)
+  h.eq(m.marker_end('10. foo'), 4)
+  h.eq(m.marker_end('plain'), nil)
+end)
+
 h.t('toggle_checkbox flips first checkbox on the line', function()
   h.eq(m.toggle_checkbox('- [ ] do it'), '- [x] do it')
   h.eq(m.toggle_checkbox('- [x] do it'), '- [ ] do it')

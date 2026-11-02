@@ -16,8 +16,9 @@ See [docs/spec.md](docs/spec.md) for the full design and non-goals.
 - `:NoteFixLink` — fix the link under the cursor, with suggested candidate notes
 - `:NoteTodos [@vault]` — list to-dos across the vault
 - Markdown niceties: `<CR>` continues lists (same bullet, incrementing
-  numbers, checkbox carried; empty item ends the list) and `<leader>x`
-  toggles checkboxes
+  numbers, checkbox carried; empty item ends the list), `<leader>x`
+  toggles checkboxes, and `<Tab>`/`<S-Tab>` indent/outdent list items
+  (normal, insert, and visual modes; defaults preserved off-list)
 - `require("notes").rename(old, new)` — public hook that rewrites all links
   to a moved file; wire it into your file manager
 
