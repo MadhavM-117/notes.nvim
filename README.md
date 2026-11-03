@@ -99,8 +99,13 @@ require('notes').setup({ ui = {
   select = function(items, opts, on_choice)
     require('snacks').picker.select(items, opts, on_choice)
   end,
+  input = function(opts, on_confirm)
+    require('snacks').input.input(opts, on_confirm)
+  end,
 } })
 ```
+
+Name prompts (`:Note`, `:NoteFromTemplate`) go through `input` the same way.
 
 ## Tests
 

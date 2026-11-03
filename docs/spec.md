@@ -20,7 +20,7 @@ the plugin keeps those links honest when files move.
 | 4 | Broken links | **No automatic rename interception.** Three cooperating pieces: (a) a diagnostic namespace marks broken links in the buffer live (open + save); (b) `:NoteFixLink` proposes candidate notes (scored by name similarity; exact-basename hits are labeled as likely moves) and applies the chosen one; (c) public `require("notes").rename(old, new)` rewrites every link that pointed at the moved file, across the vault. The user wires (c) into their file manager's rename path (docs snippet for neotree etc.). |
 | 5 | Daily notes | `:DailyNote` opens/creates today's note. Configurable directory (default `daily/` under the vault root), filename template (default `{{date:YYYY-MM-DD}}.md`), and either its own template or the default note template. |
 | 6 | Templates | A `templates.dir` anywhere on disk (top-level `*.md` files are the template list). `templates.default` is applied by `:Note`; `:NoteFromTemplate` lists all templates and creates from the chosen one. One small variable engine shared by note + daily templates: `{{title}}`, `{{date}}`, `{{time}}`, `{{vault}}`, `{{date:STRFTIME}}`. |
-| 7 | Picker | `vim.ui.select` only — zero dependencies. snacks users get the native UX with their one-liner (`snacks.picker.select` as `vim.ui.select`); Telescope/fzf users get theirs via the same mechanism. We never call a picker directly. |
+| 7 | Picker | `vim.ui.select` and `vim.ui.input` only — zero dependencies. snacks users get the native UX with their one-liners (`snacks.picker.select` as `vim.ui.select`, `snacks.input.input` as `vim.ui.input`); Telescope/fzf users get theirs via the same mechanism. We never call a picker or input directly. |
 | 8 | Markdown interactions | (a) `<CR>` on a list item continues the list: same indentation, same bullet type; numbered lists increment (width preserved, `01.` → `02.`); a `[ ]`/`[x]` checkbox carries to the next item; pressing `<CR>` on an *empty* item ends the list (strips the marker). (b) A checkbox toggle in normal/visual mode (`<leader>x`, configurable) flips the first `[ ]`/`[x]` on the line(s). Both apply to Markdown buffers only. |
 | 9 | Rename honesty | Only renames routed through `notes.rename` can be tracked. Moves via Finder, shell `mv`, or plugins that don't call the API are invisible to us — that is exactly why (4a) diagnostics and (4b) fix suggestions exist. |
 
@@ -88,7 +88,7 @@ lua/notes/vault.lua         vault resolution, path normalization/relative paths
 lua/notes/links.lua         pure: link parse/resolve/rewrite · vim: diagnostics + fix
 lua/notes/templates.lua     template variable rendering, template listing
 lua/notes/markdown.lua      pure: list continuation, checkbox toggle · vim: keymap handlers
-lua/notes/ui.lua            UI extension points (picker hook; default vim.ui.select)
+lua/notes/ui.lua            UI extension points (picker + input hooks; defaults vim.ui.select / vim.ui.input)
 after/ftplugin/markdown.lua buffer keymaps
 tests/                      plain-Lua specs (run: nvim --headless -l tests/run.lua)
 README.md

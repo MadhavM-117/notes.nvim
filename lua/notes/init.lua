@@ -104,10 +104,13 @@ local function split_prefix(args)
   return prefix, args
 end
 
-local function ask_name(rest)
-  if #rest > 0 then return table.concat(rest, ' ') end
-  local name = vim.fn.input('Note name: ')
-  return (name == '' and nil) or name
+-- Ask for a note name through the configured ui.input hook; an empty or
+-- cancelled answer calls back with nil, and no note is created.
+local function ask_name(rest, cb)
+  if #rest > 0 then return cb(table.concat(rest, ' ')) end
+  ui.input({ prompt = 'Note name: ' }, function(name)
+    if name and name ~= '' then cb(name) end
+  end)
 end
 
 -- Accept a vault name, a notes.Vault table, or nil (cwd/default rules).
@@ -155,9 +158,7 @@ end
 function M.note(args)
   local prefix, rest = split_prefix(args)
   local v = to_vault(prefix) -- fail fast on a bad @vault before prompting
-  local name = ask_name(rest)
-  if not name then return end
-  M.open(name, { vault = v })
+  ask_name(rest, function(name) M.open(name, { vault = v }) end)
 end
 
 function M.note_from_template(args)
@@ -168,14 +169,13 @@ function M.note_from_template(args)
   end
   local prefix, rest = split_prefix(args)
   local v = to_vault(prefix)
-  local name = ask_name(rest)
-  if not name then return end
-
-  ui.select(templates.list(abs(cfg.templates.dir)), {
-    prompt = 'Template:',
-    format_item = function(t) return vim.fn.fnamemodify(t, ':t') end,
-  }, function(chosen)
-    if chosen then M.open(name, { vault = v, template = chosen }) end
+  ask_name(rest, function(name)
+    ui.select(templates.list(abs(cfg.templates.dir)), {
+      prompt = 'Template:',
+      format_item = function(t) return vim.fn.fnamemodify(t, ':t') end,
+    }, function(chosen)
+      if chosen then M.open(name, { vault = v, template = chosen }) end
+    end)
   end)
 end
 
