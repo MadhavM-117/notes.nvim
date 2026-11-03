@@ -57,6 +57,11 @@ function M.cr()
   if s == nil then
     return vim.api.nvim_replace_termcodes('<CR>', true, false, true)
   end
+  if s == '' then
+    -- Empty list item: clear the marker and leave an empty line.
+    vim.api.nvim_set_current_line('')
+    return '\r'
+  end
   -- Suppress autoindent while we insert, so our marker isn't doubled.
   local buf = vim.api.nvim_get_current_buf()
   local saved = {
